@@ -1,0 +1,23 @@
+Motivated and detail-oriented BTech student specializing in Artificial Intelligence and Data Science with hands-on experience in Python, Java, SQL, Machine Learning, and Full Stack Development. Completed multiple academic and internship projects, including insurance cost prediction, voice assistant development, and Netflix recommendation system. Strong foundation in data analysis, model building, and web development. Eager to apply technical and analytical skills in real-world software engineering, AI, or data science roles.
+
+
+
+
+Hard skills are specific, teachable abilities, often acquired through training or on-the-job experience, while soft skills are interpersonal and personality-driven traits that affect how you work with others. 
+
+
+
+B.Tech (artificial intelligence and data science
+
+
+
+python, Java, C, HTML & CSS,Java script
+
+
+
+1)Netflix Recommendation system 
+2) AI voice assistant
+3)application for University admission 
+
+
+

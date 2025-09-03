@@ -1,0 +1,485 @@
+import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { ErrorHighlight } from "@/components/ui/error-highlight";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { type GrammarCheckResult, type GrammarError } from "@shared/schema";
+
+export default function Home() {
+  const [text, setText] = useState("");
+  const [result, setResult] = useState<GrammarCheckResult | null>(null);
+  const { toast } = useToast();
+
+  const checkGrammarMutation = useMutation({
+    mutationFn: async (text: string) => {
+      const response = await apiRequest("POST", "/api/grammar/check", { text });
+      return response.json() as Promise<GrammarCheckResult>;
+    },
+    onSuccess: (data) => {
+      setResult(data);
+      toast({
+        title: "Analysis Complete",
+        description: `Found ${data.summary.totalErrors} issue(s) in your text.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to check grammar. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCheckGrammar = () => {
+    if (!text.trim()) {
+      toast({
+        title: "No text to check",
+        description: "Please enter some text to analyze.",
+        variant: "destructive",
+      });
+      return;
+    }
+    checkGrammarMutation.mutate(text.trim());
+  };
+
+  const handleAcceptSuggestion = (errorId: string, suggestion: string) => {
+    if (!result) return;
+    
+    const error = result.errors.find(e => e.id === errorId);
+    if (!error) return;
+
+    const newText = text.substring(0, error.startIndex) + suggestion + text.substring(error.endIndex);
+    setText(newText);
+    
+    // Remove the corrected error from results
+    setResult({
+      ...result,
+      errors: result.errors.filter(e => e.id !== errorId),
+      summary: {
+        ...result.summary,
+        totalErrors: result.summary.totalErrors - 1,
+        [error.type + "Errors"]: result.summary[error.type + "Errors" as keyof typeof result.summary] as number - 1,
+      }
+    });
+
+    toast({
+      title: "Correction Applied",
+      description: `Replaced "${error.originalText}" with "${suggestion}".`,
+    });
+  };
+
+  const renderTextWithHighlights = () => {
+    if (!result || result.errors.length === 0) {
+      return text;
+    }
+
+    let highlightedText: React.ReactNode[] = [];
+    let lastIndex = 0;
+
+    // Sort errors by start index to process them in order
+    const sortedErrors = [...result.errors].sort((a, b) => a.startIndex - b.startIndex);
+
+    sortedErrors.forEach((error) => {
+      // Add text before the error
+      if (error.startIndex > lastIndex) {
+        highlightedText.push(text.substring(lastIndex, error.startIndex));
+      }
+
+      // Add the highlighted error
+      highlightedText.push(
+        <ErrorHighlight
+          key={error.id}
+          error={error}
+          onAcceptSuggestion={handleAcceptSuggestion}
+        >
+          {text.substring(error.startIndex, error.endIndex)}
+        </ErrorHighlight>
+      );
+
+      lastIndex = error.endIndex;
+    });
+
+    // Add remaining text after the last error
+    if (lastIndex < text.length) {
+      highlightedText.push(text.substring(lastIndex));
+    }
+
+    return highlightedText;
+  };
+
+  return (
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-2">
+              <i className="fas fa-spell-check text-2xl text-blue-600"></i>
+              <span className="text-xl font-bold text-slate-900">GrammarAI</span>
+            </div>
+            
+            <nav className="hidden md:flex items-center space-x-8">
+              <a href="#features" className="text-slate-600 hover:text-blue-600 transition-colors">Features</a>
+              <a href="#demo" className="text-slate-600 hover:text-blue-600 transition-colors">Demo</a>
+              <a href="#contact" className="text-slate-600 hover:text-blue-600 transition-colors">Contact</a>
+            </nav>
+
+            <div className="flex items-center space-x-4">
+              <Button variant="ghost" className="text-slate-600 hover:text-blue-600">
+                Sign In
+              </Button>
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                Get Started
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="bg-gradient-to-br from-slate-50 to-blue-50 py-20 lg:py-28">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
+              Perfect Your Writing with{" "}
+              <span className="text-blue-600">AI-Powered</span> Grammar Checking
+            </h1>
+            <p className="text-xl text-slate-600 mb-8 max-w-3xl mx-auto leading-relaxed">
+              Enhance your writing with advanced grammar, spelling, and punctuation correction. 
+              Get instant suggestions and improve your communication with professional-grade AI assistance.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+              <Button 
+                size="lg" 
+                className="bg-blue-600 hover:bg-blue-700 transform hover:scale-105 transition-all shadow-lg"
+                onClick={() => document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                <i className="fas fa-rocket mr-2"></i>
+                Try Free Demo
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg"
+                className="border-slate-300 text-slate-700 hover:border-blue-600 hover:text-blue-600"
+              >
+                <i className="fas fa-play mr-2"></i>
+                Watch Demo
+              </Button>
+            </div>
+            
+            {/* Trust Badges */}
+            <div className="flex flex-wrap justify-center items-center gap-8 text-slate-500 text-sm">
+              <div className="flex items-center gap-2">
+                <i className="fas fa-shield-alt text-blue-600"></i>
+                <span>Privacy Protected</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <i className="fas fa-bolt text-blue-600"></i>
+                <span>Lightning Fast</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <i className="fas fa-users text-blue-600"></i>
+                <span>Trusted by 10M+ Users</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Grammar Checker Demo */}
+      <section id="demo" className="py-20 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
+              Experience the Power of AI Grammar Checking
+            </h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+              Paste your text below and see how our AI instantly identifies and suggests corrections for grammar, spelling, and punctuation errors.
+            </p>
+          </div>
+
+          <Card className="bg-slate-50 shadow-lg">
+            <CardContent className="p-8">
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-slate-700 mb-3">
+                  <i className="fas fa-edit mr-2"></i>
+                  Paste or type your text here:
+                </label>
+                <div className="relative">
+                  <div className="min-h-[300px] w-full p-5 border-2 border-slate-200 rounded-xl bg-white focus-within:border-blue-600 focus-within:shadow-lg transition-all">
+                    {result ? (
+                      <div 
+                        className="min-h-[260px] text-base leading-relaxed whitespace-pre-wrap"
+                        style={{ fontFamily: 'Inter, sans-serif' }}
+                      >
+                        {renderTextWithHighlights()}
+                      </div>
+                    ) : (
+                      <textarea
+                        value={text}
+                        onChange={(e) => setText(e.target.value)}
+                        placeholder="Try typing: 'This are a example of bad grammer and puncuation. Its going to be corrected by the AI system.'"
+                        className="w-full min-h-[260px] resize-none border-none outline-none text-base leading-relaxed"
+                        style={{ fontFamily: 'Inter, sans-serif' }}
+                      />
+                    )}
+                  </div>
+                  <div className="absolute bottom-4 right-4 text-sm text-slate-400">
+                    {text.length} characters
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+                {result && (
+                  <div className="flex flex-wrap gap-2 text-sm">
+                    <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full">
+                      <i className="fas fa-exclamation-circle mr-1"></i>
+                      {result.summary.grammarErrors} Grammar
+                    </span>
+                    <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full">
+                      <i className="fas fa-spell-check mr-1"></i>
+                      {result.summary.spellingErrors} Spelling
+                    </span>
+                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
+                      <i className="fas fa-question-circle mr-1"></i>
+                      {result.summary.punctuationErrors} Punctuation
+                    </span>
+                  </div>
+                )}
+                <Button 
+                  onClick={handleCheckGrammar}
+                  disabled={checkGrammarMutation.isPending}
+                  className="bg-blue-600 hover:bg-blue-700 shadow-md"
+                >
+                  {checkGrammarMutation.isPending ? (
+                    <>
+                      <i className="fas fa-spinner fa-spin mr-2"></i>
+                      Checking...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-search mr-2"></i>
+                      Check Grammar
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Results Summary */}
+              {result && (
+                <Card className="mt-8 border border-slate-200">
+                  <CardContent className="p-6">
+                    <h3 className="font-semibold text-slate-800 mb-4 flex items-center">
+                      <i className="fas fa-chart-line mr-2 text-blue-600"></i>
+                      Analysis Results
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="text-center p-4 bg-slate-50 rounded-lg">
+                        <div className="text-2xl font-bold text-slate-800">{result.summary.totalErrors}</div>
+                        <div className="text-sm text-slate-600">Total Issues Found</div>
+                      </div>
+                      <div className="text-center p-4 bg-green-50 rounded-lg">
+                        <div className="text-2xl font-bold text-green-600">{result.summary.accuracyScore}%</div>
+                        <div className="text-sm text-slate-600">Accuracy Score</div>
+                      </div>
+                      <div className="text-center p-4 bg-blue-50 rounded-lg">
+                        <div className="text-2xl font-bold text-blue-600">{result.summary.processingTime.toFixed(1)}s</div>
+                        <div className="text-sm text-slate-600">Processing Time</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section id="features" className="py-20 bg-slate-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
+              Advanced Writing Enhancement Features
+            </h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+              Our AI-powered platform offers comprehensive writing assistance to help you communicate more effectively.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <Card className="bg-white hover:shadow-lg transition-shadow">
+              <CardContent className="p-8">
+                <div className="w-12 h-12 bg-blue-600 bg-opacity-10 rounded-lg flex items-center justify-center mb-6">
+                  <i className="fas fa-spell-check text-2xl text-blue-600"></i>
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-3">Grammar Detection</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Advanced AI identifies complex grammar errors including subject-verb agreement, tense consistency, and sentence structure issues.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white hover:shadow-lg transition-shadow">
+              <CardContent className="p-8">
+                <div className="w-12 h-12 bg-green-500 bg-opacity-10 rounded-lg flex items-center justify-center mb-6">
+                  <i className="fas fa-check-double text-2xl text-green-500"></i>
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-3">Spell Checking</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Comprehensive spell checking with contextual suggestions and support for technical terms and proper nouns.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white hover:shadow-lg transition-shadow">
+              <CardContent className="p-8">
+                <div className="w-12 h-12 bg-purple-500 bg-opacity-10 rounded-lg flex items-center justify-center mb-6">
+                  <i className="fas fa-quote-right text-2xl text-purple-500"></i>
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-3">Punctuation Fix</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Intelligent punctuation correction including comma placement, apostrophes, and quotation marks.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white hover:shadow-lg transition-shadow">
+              <CardContent className="p-8">
+                <div className="w-12 h-12 bg-amber-500 bg-opacity-10 rounded-lg flex items-center justify-center mb-6">
+                  <i className="fas fa-lightbulb text-2xl text-amber-500"></i>
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-3">Style Suggestions</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Improve clarity, conciseness, and readability with intelligent style and tone recommendations.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white hover:shadow-lg transition-shadow">
+              <CardContent className="p-8">
+                <div className="w-12 h-12 bg-red-500 bg-opacity-10 rounded-lg flex items-center justify-center mb-6">
+                  <i className="fas fa-bolt text-2xl text-red-500"></i>
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-3">Real-time Analysis</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Get instant feedback as you type with real-time error detection and correction suggestions.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white hover:shadow-lg transition-shadow">
+              <CardContent className="p-8">
+                <div className="w-12 h-12 bg-indigo-500 bg-opacity-10 rounded-lg flex items-center justify-center mb-6">
+                  <i className="fas fa-shield-alt text-2xl text-indigo-500"></i>
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-3">Privacy Focused</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Your documents are processed securely with end-to-end encryption and are never stored permanently.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 bg-gradient-to-r from-blue-600 to-blue-700">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+            Ready to Perfect Your Writing?
+          </h2>
+          <p className="text-xl text-blue-100 mb-8 leading-relaxed">
+            Join millions of professionals who trust GrammarAI to enhance their writing. 
+            Start your free trial today and experience the difference.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button 
+              size="lg"
+              className="bg-white text-blue-600 hover:bg-slate-50 transform hover:scale-105 transition-all shadow-lg"
+            >
+              Start Free Trial
+            </Button>
+            <Button 
+              variant="outline" 
+              size="lg"
+              className="border-white text-white hover:bg-white hover:text-blue-600"
+            >
+              Learn More
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer id="contact" className="bg-slate-900 text-white py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="lg:col-span-2">
+              <div className="flex items-center space-x-2 mb-6">
+                <i className="fas fa-spell-check text-2xl text-blue-600"></i>
+                <span className="text-xl font-bold">GrammarAI</span>
+              </div>
+              <p className="text-slate-300 mb-6 leading-relaxed max-w-md">
+                Empowering writers worldwide with AI-powered grammar checking and writing enhancement tools. 
+                Perfect your communication with professional-grade assistance.
+              </p>
+              <div className="flex space-x-4">
+                <a href="#" className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center hover:bg-blue-600 transition-colors">
+                  <i className="fab fa-twitter"></i>
+                </a>
+                <a href="#" className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center hover:bg-blue-600 transition-colors">
+                  <i className="fab fa-facebook"></i>
+                </a>
+                <a href="#" className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center hover:bg-blue-600 transition-colors">
+                  <i className="fab fa-linkedin"></i>
+                </a>
+                <a href="#" className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center hover:bg-blue-600 transition-colors">
+                  <i className="fab fa-github"></i>
+                </a>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-lg mb-4">Product</h4>
+              <ul className="space-y-3 text-slate-300">
+                <li><a href="#" className="hover:text-white transition-colors">Features</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Pricing</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">API</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Desktop App</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Browser Extension</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-lg mb-4">Support</h4>
+              <ul className="space-y-3 text-slate-300">
+                <li><a href="#" className="hover:text-white transition-colors">Help Center</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Contact Us</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Terms of Service</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">Status Page</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-800 mt-12 pt-8">
+            <div className="flex flex-col md:flex-row justify-between items-center">
+              <p className="text-slate-400 text-sm">
+                © 2024 GrammarAI. All rights reserved.
+              </p>
+              <div className="flex items-center space-x-6 mt-4 md:mt-0 text-sm text-slate-400">
+                <span>📧 contact@grammarai.com</span>
+                <span>📞 1-800-GRAMMAR</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}

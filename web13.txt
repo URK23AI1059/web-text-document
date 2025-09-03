@@ -1,0 +1,74 @@
+# Overview
+
+This is a modern full-stack grammar checking application built with React, Express, and OpenAI's GPT-4o API. The application allows users to input text and receive detailed feedback on grammar, spelling, and punctuation errors with intelligent suggestions for corrections. It features a clean, responsive UI built with shadcn/ui components and Tailwind CSS.
+
+# User Preferences
+
+Preferred communication style: Simple, everyday language.
+
+# System Architecture
+
+## Frontend Architecture
+- **Framework**: React 18 with TypeScript for type safety
+- **Routing**: Wouter for lightweight client-side routing
+- **State Management**: TanStack Query (React Query) for server state management and caching
+- **UI Components**: shadcn/ui component library built on Radix UI primitives
+- **Styling**: Tailwind CSS with CSS variables for theming support
+- **Build Tool**: Vite for fast development and optimized production builds
+
+## Backend Architecture
+- **Runtime**: Node.js with Express.js framework
+- **Language**: TypeScript with ES modules
+- **API Design**: RESTful API with structured error handling
+- **Request Validation**: Zod schemas for runtime type validation
+- **Development**: Hot reload via Vite middleware integration
+
+## Data Storage Solutions
+- **Database**: PostgreSQL configured via Drizzle ORM
+- **Migration Management**: Drizzle Kit for schema migrations
+- **Connection**: Neon Database serverless connection
+- **Schema Location**: Shared schema definitions in `/shared/schema.ts`
+
+## Authentication and Authorization
+- **Current State**: No authentication system implemented
+- **Session Management**: Basic session store configuration present but unused
+- **Architecture**: Prepared for future session-based authentication
+
+## Core Features
+- **Grammar Analysis**: Real-time text analysis using OpenAI GPT-4o
+- **Error Categorization**: Distinguishes between grammar, spelling, and punctuation errors
+- **Interactive UI**: Click-to-accept suggestions with visual error highlighting
+- **Performance Metrics**: Processing time and accuracy scoring
+- **Responsive Design**: Mobile-first approach with adaptive layouts
+
+## Development Workflow
+- **Monorepo Structure**: Client, server, and shared code in single repository
+- **Path Aliases**: TypeScript path mapping for clean imports
+- **Development Server**: Concurrent client and server development
+- **Build Process**: Separate client (Vite) and server (esbuild) builds
+
+# External Dependencies
+
+## AI/ML Services
+- **OpenAI API**: GPT-4o model for grammar checking and text analysis
+- **API Configuration**: Environment variable based API key management
+
+## Database Services
+- **Neon Database**: Serverless PostgreSQL hosting
+- **Connection**: Environment variable based connection string
+
+## Development Tools
+- **Replit Integration**: Native Replit development environment support
+- **Error Overlay**: Runtime error modal for development debugging
+- **Cartographer**: Replit-specific development tooling
+
+## UI Libraries
+- **Radix UI**: Comprehensive set of accessible UI primitives
+- **Lucide Icons**: Icon library for consistent iconography
+- **Embla Carousel**: Carousel component for enhanced UX
+- **React Hook Form**: Form state management with validation
+
+## Utility Libraries
+- **date-fns**: Date manipulation and formatting
+- **clsx/tailwind-merge**: Dynamic CSS class composition
+- **class-variance-authority**: Type-safe component variants

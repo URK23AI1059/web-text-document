@@ -1,0 +1,16 @@
+import { type GrammarCheckResult } from "@shared/schema";
+import { randomUUID } from "crypto";
+
+// Simple interface for this grammar checking application
+export interface IStorage {
+  // We don't need persistent storage for grammar checking
+  // This is just here to maintain consistency with the template
+}
+
+export class MemStorage implements IStorage {
+  constructor() {
+    // No persistent storage needed for grammar checking
+  }
+}
+
+export const storage = new MemStorage();

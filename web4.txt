@@ -1,0 +1,26 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { storage } from "./storage";
+import { grammarCheckSchema } from "@shared/schema";
+import { checkGrammar } from "./openai";
+import { z } from "zod";
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  // Grammar checking endpoint
+  app.post("/api/grammar/check", async (req, res) => {
+    try {
+      const { text } = grammarCheckSchema.parse(req.body);
+      const result = await checkGrammar(text);
+      res.json(result);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid input", errors: error.errors });
+      } else {
+        res.status(500).json({ message: (error as Error).message });
+      }
+    }
+  });
+
+  const httpServer = createServer(app);
+  return httpServer;
+}
